@@ -12,10 +12,10 @@ class SciSpider(scrapy.Spider):
     allowed_domains = ['www.sci99.com/']
 
     def start_requests(self):
-     user_agent=fake.user_agent()
+        user_agent=fake.user_agent()
 
 
-     urls = ['https://www.sci99.com/monitor-1-0.html','https://www.sci99.com/monitor-1-0.html','https://www.sci99.com/monitor-1-1.html',
+        urls = ['https://www.sci99.com/monitor-1-0.html','https://www.sci99.com/monitor-1-0.html','https://www.sci99.com/monitor-1-1.html',
              'https://www.sci99.com/monitor-9180-0.html','https://www.sci99.com/monitor-9179-0.html','https://www.sci99.com/monitor-439-0.html',
              'https://www.sci99.com/monitor-429-0.html','https://www.sci99.com/monitor-750-0.html','https://www.sci99.com/monitor-1084-0.html',
              'https://www.sci99.com/monitor-752-0.html','https://www.sci99.com/monitor-428-0.html','https://www.sci99.com/monitor-430-0.html',
@@ -329,59 +329,49 @@ class SciSpider(scrapy.Spider):
              'https://www.sci99.com/monitor-94895214-0.html',
              'https://www.sci99.com/monitor-94975214-0.html']
 
-     for url in urls:
-        time.sleep(round(random.uniform(1,4), 2))
-        yield scrapy.Request(url=url,callback=self.parse,headers={"User-Agent": fake.user_agent()})
+        for url in urls:
+            time.sleep(round(random.uniform(1,4), 2))
+            yield scrapy.Request(url=url,callback=self.parse,headers={"User-Agent": fake.user_agent()})
 
     def parse(self, response):
         
         def clean(string):
-            string=re.sub(r' ','',string)
-            string=re.sub(r'\r','',string)
-            string=re.sub(r'\n','',string)
+
+            # Remove all whitespace characters
+            string = re.sub(r'\s+', '', string)
             
-            return string
-        print(response.request.headers['User-Agent'])
-        result=response.xpath('//div[@id="Panel1"]/div[@class="div_content"]/div/table/tr/td/text()').getall()
-        price_result=response.xpath('//div[@id="Panel1"]/div[@class="div_content"]/div/table/tr/td/a/text()').getall()
+            # Use the str.strip() method to remove leading and trailing whitespace
+            return string.strip()
 
-        #result=response.xpath('/html/body/form/div[7]/div[1]/div[1]/div[1]/h2').get()
-        print('Here is the result',result)
-        #date=[d[0] for d in result]
-        #price=[p[1] for p in result]
-        
-        table_name=response.xpath('//div[@class="detect_title"]/h2/text()').get()
-        table_name=clean(table_name)
-        #form1 > div.ny_main > div.div_main_l.w626 > div.ny_detect > div.detect_title > h2
-        print('Here is the table name',table_name)
-        #/html/body/form/div[7]/div[1]/div[1]/div[3]/div[1]/div/table/tbody/tr[1]/td[1]/text()
-        #print(table_name*len(date),date,price)
-        
-        conn=sqlite3.connect(r'C:\Users\s3309\Website\AT_WEB\db\RM.db')
-        c=conn.cursor()
+        # Use more descriptive variable names
+        table_rows = response.xpath('//div[@id="Panel1"]/div[@class="div_content"]/div/table/tr')
 
+        # Use a list comprehension to extract the data from the table rows
+        data = [clean(row.xpath('td/text()').get()) for row in table_rows]
+
+        # Use a similar approach to extract the prices
+        prices = [clean(row.xpath('td/a/text()').get()) for row in table_rows]
+        
         date_all=[]
         price_all=[]
 
-        for r in range(0,len(result)):
-            if re.search(r'\d{4}-',result[r]):
-                date=clean(result[r])
-                date_all.append(date)
-        
-        for r in range(0,len(price_result)):
-                if r==0: price_all.append(clean(price_result[r]))
-                elif re.search(r'%',price_result[r]) and not r==len(price_result)-1:
-                    price=clean(price_result[r+1])
-                    price_all.append(price)
+        for row in range(0,len(data)):
+            if re.match(r'\d{4}-\d{1,2}-\d{1,2}',data[row]):
+                date_all.append(clean(result[row]))
 
-        for i,j in zip(date_all,price_all):   
-            date=i
-            price=j
+        for row in range(0,len(prices)):
+            if r==0: 
+                price_all.append(clean(prices[row]))
+            elif re.search(r'%',prices[r]) and not r==len(prices)-1:
+                price_all.append(clean(prices[r+1]))
 
-            c.execute("INSERT INTO Raw_material (Date,Material_name,Price) VALUES (?,?,?)",(date,table_name,price))
-            conn.commit()
+        conn=sqlite3.connect(r'C:\Users\s3309\Website\AT_WEB\db\RM.db')
+        c=conn.cursor()
 
-            yield {'date':date,'price':price,'Material':table_name}
-        
-        c.close()
-        conn.close()
+        for date,price in zip(date_all,price_all):   
+
+            with conn:
+                c=conn.cursor()
+                c.execute("INSERT INTO Raw_material (Date,Material_name,Price) VALUES (?,?,?)",(date,table_name,price))
+                conn.commit()
+                yield {'date':date,'price':price,'Material':table_name}
