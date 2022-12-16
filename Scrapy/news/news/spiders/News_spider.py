@@ -1,14 +1,14 @@
 import scrapy
-import pandas as pd
-import sqlite3
+import psycopg2
 import json
 import requests
 import datetime
 
-def get_urls():
+def get_urls(start_date,end_date):
     urls=[]
-    start = datetime.datetime(2022,8,14).timestamp()
-    while (start > datetime.datetime(2022,1,1).timestamp()):
+    start = datetime.datetime.strptime(start_date,"%Y-%m-%d").timestamp()
+    end =datetime.datetime.strptime(end_date,"%Y-%m-%d").timestamp()
+    while (start > end):
 
         old = start - 2592000
 
@@ -31,24 +31,31 @@ def get_urls():
 
 class NewsSpider(scrapy.Spider):
     name = "News"
-    start_urls = get_urls()
-    if len(start_urls)==0: raise ValueError('ha')\
-
     allowed_domains =['https://news.cnyes.com/']
+
+    def __init__(self,start_date,end_date):
+        self.start_urls = get_urls(start_date,end_date)
 
     def parse(self, response):
 
-        conn = sqlite3.connect(r'C:\Users\s3309\Website\AT_WEB\db\db.sqlite3')
-
-        data=pd.DataFrame()
         headline= response.xpath('//h1[@itemprop="headline"]/text()').get()
         tags='|'.join(response.xpath('//span[@class="_1E-R"]/text()').getall())
         content='\b'.join(response.xpath('//p/text()').getall()[4:])
-        time=response.xpath('//time/text()').get()
+        date=response.xpath('//time/text()').get()
 
-        c=conn.cursor()
-        c.execute(f"INSERT INTO News ('Date', 'Headline', 'Tags', 'Content') VALUES (?,?,?,?)",[time,headline,tags,content])
+        conn = psycopg2.connect(
+            host="db",
+            database="postgres",
+            user="postgres",
+            password="postgres")
 
-        conn.commit()
-        conn.close()
+        with conn:
+            with conn.cursor() as c:
+                insert_sql = "INSERT INTO News ('Date', 'Headline', 'Tags', 'Content') VALUES (%s,%s,%s,%s)\
+                        ON CONFLICT ('Date', 'Headline') DO UPDATE \
+                        SET (Tags,Content) = (EXCLUDED.Tags,EXCLUDED.Content)" 
+
+                c.execute(insert_sql,(date,headline,tags,content))
+                conn.commit()
+                yield {'date':date,'headline':headline}
 

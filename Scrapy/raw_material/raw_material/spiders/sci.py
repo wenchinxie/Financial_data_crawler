@@ -1,6 +1,6 @@
 import scrapy
 import re
-import sqlite3
+import psycopg2
 from faker import Faker
 import random
 import time
@@ -14,8 +14,7 @@ class SciSpider(scrapy.Spider):
     def start_requests(self):
         user_agent=fake.user_agent()
 
-
-        urls = ['https://www.sci99.com/monitor-1-0.html','https://www.sci99.com/monitor-1-0.html','https://www.sci99.com/monitor-1-1.html',
+        urls = ['https://www.sci99.com/monitor-1-0.html','https://www.sci99.com/monitor-1-0.html','https://www.sci99.com/monitor-1-0.html',
              'https://www.sci99.com/monitor-9180-0.html','https://www.sci99.com/monitor-9179-0.html','https://www.sci99.com/monitor-439-0.html',
              'https://www.sci99.com/monitor-429-0.html','https://www.sci99.com/monitor-750-0.html','https://www.sci99.com/monitor-1084-0.html',
              'https://www.sci99.com/monitor-752-0.html','https://www.sci99.com/monitor-428-0.html','https://www.sci99.com/monitor-430-0.html',
@@ -133,7 +132,6 @@ class SciSpider(scrapy.Spider):
              'https://www.sci99.com/monitor-107985214-0.html',
              'https://www.sci99.com/monitor-94852214-0.html',
              'https://www.sci99.com/monitor-114763214-0.html',
-             'https://www.sci99.com/monitor-1-0.html',
              'https://www.sci99.com/monitor-9-0.html',
              'https://www.sci99.com/monitor-33-0.html',
              'https://www.sci99.com/monitor-894-0.html',
@@ -343,6 +341,9 @@ class SciSpider(scrapy.Spider):
             # Use the str.strip() method to remove leading and trailing whitespace
             return string.strip()
 
+        #Material name
+        table_name = clean(response.xpath('//div[@class="detect_title"]/h2/text()').get())
+
         # Use more descriptive variable names
         table_rows = response.xpath('//div[@id="Panel1"]/div[@class="div_content"]/div/table/tr')
 
@@ -357,21 +358,23 @@ class SciSpider(scrapy.Spider):
 
         for row in range(0,len(data)):
             if re.match(r'\d{4}-\d{1,2}-\d{1,2}',data[row]):
-                date_all.append(clean(result[row]))
-
-        for row in range(0,len(prices)):
-            if r==0: 
+                date_all.append(clean(data[row]))
                 price_all.append(clean(prices[row]))
-            elif re.search(r'%',prices[r]) and not r==len(prices)-1:
-                price_all.append(clean(prices[r+1]))
 
-        conn=sqlite3.connect(r'C:\Users\s3309\Website\AT_WEB\db\RM.db')
-        c=conn.cursor()
+        conn = psycopg2.connect(
+            host="db",
+            database="postgres",
+            user="postgres",
+            password="postgres",
+            port="5432")
 
-        for date,price in zip(date_all,price_all):   
+        with conn:
+            with conn.cursor() as c:
+                insert_sql = "INSERT INTO Raw_material (Date,Material_name,Price) VALUES (%s,%s,%s)\
+                        ON CONFLICT (Date,Material_name) DO UPDATE \
+                        SET Price=EXCLUDED.Price" 
 
-            with conn:
-                c=conn.cursor()
-                c.execute("INSERT INTO Raw_material (Date,Material_name,Price) VALUES (?,?,?)",(date,table_name,price))
-                conn.commit()
-                yield {'date':date,'price':price,'Material':table_name}
+                for date,price in zip(date_all,price_all):  
+                    c.execute(insert_sql,(date,table_name,price))
+                    conn.commit()
+                    yield {'date':date,'table_name':table_name,price:'price'}
