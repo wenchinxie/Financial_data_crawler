@@ -1,10 +1,13 @@
 import scrapy
 import re
-import psycopg2
 from faker import Faker
 import random
 import time
 
+from Financial_data_crawler.db.clients import MongoClient
+from Financial_data_crawler.db.RMModel import Raw_Material
+
+client=MongoClient('Scrapy','Raw_Material')
 fake=Faker()
 
 class SciSpider(scrapy.Spider):
@@ -361,20 +364,15 @@ class SciSpider(scrapy.Spider):
                 date_all.append(clean(data[row]))
                 price_all.append(clean(prices[row]))
 
-        conn = psycopg2.connect(
-            host="db",
-            database="postgres",
-            user="postgres",
-            password="postgres",
-            port="5432")
+        for date, price in zip(date_all, price_all):
+             d = {'Date': date, 'Material_Name': table_name, 'Price': float(price)}
+             Raw_Material.objects(Date=date, Material_Name=table_name).modify(upsert=True, **d)
 
-        with conn:
-            with conn.cursor() as c:
-                insert_sql = "INSERT INTO Raw_material (Date,Material_name,Price) VALUES (%s,%s,%s)\
-                        ON CONFLICT (Date,Material_name) DO UPDATE \
-                        SET Price=EXCLUDED.Price" 
+    @classmethod
+    def from_crawler(cls, crawler, *args, **kwargs):
+        spider = super(SciSpider, cls).from_crawler(crawler, *args, **kwargs)
+        crawler.signals.connect(spider.spider_closed, signal=scrapy.signals.spider_closed)
+        return spider
 
-                for date,price in zip(date_all,price_all):  
-                    c.execute(insert_sql,(date,table_name,price))
-                    conn.commit()
-                    yield {'date':date,'table_name':table_name,price:'price'}
+    def spider_closed(self, spider):
+         client.close()

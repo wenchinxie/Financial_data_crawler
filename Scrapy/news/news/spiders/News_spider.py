@@ -2,7 +2,8 @@ import scrapy
 import json
 import requests
 import datetime
-from Financial_data_crawler.db import clients
+from Financial_data_crawler.db.clients import MongoClient
+from Financial_data_crawler.db.NewsModel import Cynes_News
 from Financial_data_crawler.Data_Cleaner import news_cleaner
 
 def get_urls(start_date=0,end_date=0):
@@ -43,8 +44,9 @@ class NewsSpider(scrapy.Spider):
 
     def __init__(self,start_date=0,end_date=0):
         self.start_urls = get_urls(start_date,end_date)
-        self.db = clients.get_mongodb_news_conn()
+        self.newsdb = MongoClient('Scrapy','News')
         self.tag_cleaner= news_cleaner.tags_extract()
+        self.__docs = Cynes_News
 
     def parse(self, response):
 
@@ -52,13 +54,18 @@ class NewsSpider(scrapy.Spider):
         tags=response.xpath('//span[@class="_1E-R"]/text()').getall()
         content='\b'.join(response.xpath('//p/text()').getall()[4:])
         date=response.xpath('//time/text()').get()
+        data = {'Date':date,'Headline':headline,'Tags':'|'.join(tags),'Content':content}
 
-        # Insert the raw data to mongodb
-        db = self.db.News
-        try:
-            db['Cnyes News'].insert_one({'Date':date,'Headline':headline,'Tags':'|'.join(tags),'Content':content})
-        except:
-            pass;
+        self.__docs(**data).save()
 
         # Update companies' profile
         self.tag_cleaner.update_tags(tags,date)
+
+    @classmethod
+    def from_crawler(cls, crawler, *args, **kwargs):
+        spider = super(NewsSpider, cls).from_crawler(crawler, *args, **kwargs)
+        crawler.signals.connect(spider.spider_closed, signal=scrapy.signals.spider_closed)
+        return spider
+
+    def spider_closed(self, spider):
+        self.newsdb.close()
