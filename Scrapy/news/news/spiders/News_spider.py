@@ -1,18 +1,26 @@
 import scrapy
-import psycopg2
 import json
 import requests
 import datetime
+from Financial_data_crawler.db import clients
+from Financial_data_crawler.Data_Cleaner import news_cleaner
 
-def get_urls(start_date,end_date):
+def get_urls(start_date=0,end_date=0):
     urls=[]
-    start = datetime.datetime.strptime(start_date,"%Y-%m-%d").timestamp()
-    end =datetime.datetime.strptime(end_date,"%Y-%m-%d").timestamp()
+    if not start_date==end_date==0:
+        start = datetime.datetime.strptime(start_date,"%Y-%m-%d").timestamp()
+        end =datetime.datetime.strptime(end_date,"%Y-%m-%d").timestamp()
+    else:
+        start=datetime.datetime.today().timestamp()
+        end=start-86400
+
     while (start > end):
 
-        old = start - 2592000
+        #Fetch one-month data per time
+        if not end ==0:old = start - 2592000
+        else:
+            old=start-86400
 
-        print('Time Period:',datetime.date.fromtimestamp(old).strftime("%Y-%m-%d"),'-',datetime.date.fromtimestamp(start).strftime("%Y-%m-%d"))
         linkage = f'https://news.cnyes.com/api/v3/news/category/tw_stock?startAt={int(round(old,0))}&endAt={int(round(start,0))}&limit=30&page={1}'
         raw_text = json.loads(requests.get(linkage).text)
         last_page = raw_text['items']['last_page']
@@ -33,29 +41,24 @@ class NewsSpider(scrapy.Spider):
     name = "News"
     allowed_domains =['https://news.cnyes.com/']
 
-    def __init__(self,start_date,end_date):
+    def __init__(self,start_date=0,end_date=0):
         self.start_urls = get_urls(start_date,end_date)
+        self.db = clients.get_mongodb_news_conn()
+        self.tag_cleaner= news_cleaner.tags_extract()
 
     def parse(self, response):
 
         headline= response.xpath('//h1[@itemprop="headline"]/text()').get()
-        tags='|'.join(response.xpath('//span[@class="_1E-R"]/text()').getall())
+        tags=response.xpath('//span[@class="_1E-R"]/text()').getall()
         content='\b'.join(response.xpath('//p/text()').getall()[4:])
         date=response.xpath('//time/text()').get()
 
-        conn = psycopg2.connect(
-            host="db",
-            database="postgres",
-            user="postgres",
-            password="postgres")
+        # Insert the raw data to mongodb
+        db = self.db.News
+        try:
+            db['Cnyes News'].insert_one({'Date':date,'Headline':headline,'Tags':'|'.join(tags),'Content':content})
+        except:
+            pass;
 
-        with conn:
-            with conn.cursor() as c:
-                insert_sql = "INSERT INTO News ('Date', 'Headline', 'Tags', 'Content') VALUES (%s,%s,%s,%s)\
-                        ON CONFLICT ('Date', 'Headline') DO UPDATE \
-                        SET (Tags,Content) = (EXCLUDED.Tags,EXCLUDED.Content)" 
-
-                c.execute(insert_sql,(date,headline,tags,content))
-                conn.commit()
-                yield {'date':date,'headline':headline}
-
+        # Update companies' profile
+        self.tag_cleaner.update_tags(tags,date)

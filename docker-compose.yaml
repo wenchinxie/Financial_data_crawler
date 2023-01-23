@@ -3,9 +3,13 @@ version: '3.8'
 services:
   sci_crawler: 
     build: ./Scrapy/raw_material
+    networks:
+      - dev
 
   news_crawler:
     build: ./Scrapy/news
+    networks:
+      - dev
 
   db:
     image: postgres:latest
@@ -17,6 +21,12 @@ services:
       - '5432:5432'
     volumes: 
       - ./db/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - dev
 
 volumes:
   db:
+
+networks:
+  dev: 
+    external: true

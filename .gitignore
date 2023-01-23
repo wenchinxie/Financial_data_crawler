@@ -10,6 +10,9 @@ __pycache__/
 *.db
 *.sqlite
 
+# connection secret
+db/
+
 # Distribution / packaging
 .Python
 build/
@@ -68,6 +71,12 @@ db.sqlite3-journal
 # Flask stuff:
 instance/
 .webassets-cache
+
+# Setting stuff
+*.ini
+
+# Drawing stuff
+*.drawio
 
 # Scrapy stuff:
 .scrapy
