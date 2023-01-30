@@ -1,5 +1,9 @@
 import pandas as pd
 
+
 class DataFrame:
-    def get_raw_data(self,api:str):
+
+    @staticmethod
+    def get_raw_data(api: str):
         return pd.read_csv(api)
+    
