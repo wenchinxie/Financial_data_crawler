@@ -5,5 +5,10 @@ class DataFrame:
 
     @staticmethod
     def get_raw_data(api: str):
-        return pd.read_csv(api)
+        try:
+            data = pd.read_csv(api)
+        except FileNotFoundError:
+            data = pd.DataFrame()
+
+        return data
     
