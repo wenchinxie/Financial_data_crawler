@@ -4,7 +4,7 @@ import requests
 import datetime
 from Financial_data_crawler.db.clients import MongoClient
 from Financial_data_crawler.db.NewsModel import Cynes_News
-from Financial_data_crawler.Data_Cleaner import news_cleaner
+from Financial_data_crawler.DataCleaner import news_cleaner
 
 def get_urls(start_date=0,end_date=0):
     urls=[]

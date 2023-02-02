@@ -3,23 +3,33 @@ import datetime
 from Financial_data_crawler.db import router, clients
 from Financial_data_crawler import config_setup
 
-from Financial_data_crawler.DataReader import HttpClient
+from Financial_data_crawler.DataReader import HTTPClient
 
 config = config_setup.config
 
 
 def main(crawler_type: str, crawler_name: str):
+
+    # Connect to Database
     client = clients.MongoClient(crawler_type, crawler_name)
 
+    # Select the router
     r = router.Router(crawler_type, crawler_name)
+
+    # Need to update?
     update_date = date_compare(r, crawler_name)
 
     if update_date is None:
         client.close()
         return None
 
+    # Parse Data
     func = importlib.import_module(f'Financial_data_crawler.{crawler_type}_crawler.CrawlerPool')
+
+    # Get Raw Data
     dataset = getattr(func, 'crawler_select')(crawler_name)
+
+    # Update to database
     r.update_data(dataset, update_date)
     client.close()
 
@@ -47,7 +57,7 @@ class DateChecker:
 
     @staticmethod
     def marketday():
-        client = HttpClient.HttpClient()
+        client = HTTPClient.HTTPClient()
         return client.get_market_day()
 
     @staticmethod

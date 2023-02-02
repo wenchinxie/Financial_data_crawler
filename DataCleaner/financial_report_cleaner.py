@@ -11,6 +11,7 @@ import multiprocessing
 from loguru import logger
 
 from Financial_data_crawler import config_setup
+
 config = config_setup.config
 
 
@@ -41,14 +42,22 @@ class TWFinancialReport:
         soup = BeautifulSoup(data, 'html.parser')
 
         # Basic Info
-        filename = Path(file).stem.split('-')
+        filename = Path(file).stem.split('-')  # Use Path to distinguish file name
         stockid = filename[-2]
-        year = int(filename[-1][:4])
+        year = filename[-1][:4]
         quarter = filename[-1][4:]
-        Financial_Report = {'StockID': stockid,
-                            'Year': year,
+        quarter_mapping = {
+            'Q1': '03-31',
+            'Q2': '05-15',
+            'Q3': '08-15',
+            'Q4': '11-15'
+        }
+        date = year + '-' + quarter_mapping[quarter]
+        financial_report = {'StockID': stockid,
+                            'Year': int(year),
                             'Quarter': quarter,
-                            'Type': 'TW'}
+                            'Type': 'TW',
+                            'Date': date}
 
         sht_mapping = {
             'Balance Sheet': 'BalanceSheet',
@@ -77,15 +86,16 @@ class TWFinancialReport:
                 sht = list(sht_mapping.values())[i]
                 res = {}
                 PROBLEM_TABLE = True
+
             finally:
-                Financial_Report[sht] = res
+                financial_report[sht] = res
 
         if PROBLEM_TABLE:
             TWFinancialReport.move_problem_file(file)
         else:
             TWFinancialReport.move_completed_file(file)
 
-        return Financial_Report
+        return financial_report
 
     @staticmethod
     def BS_PL_CF_Parse(table, REQUIRE_COL=1) -> dict:
@@ -107,7 +117,7 @@ class TWFinancialReport:
         # Start from the second one because the first item is category and second one is period
         for i, n in enumerate(infos[2:-2]):
             code = n.find('td').text
-            next_code = infos[i+3].find('td').text
+            next_code = infos[i + 3].find('td').text
             if code == '' or code.count('\u3000') < next_code.count('\u3000'):
                 # If there isn't any code, then use stack to record the category
                 # Some doesn't have subjects, so compare the tab to record the category
@@ -153,7 +163,7 @@ class TWFinancialReport:
         if stack == []:
             key = list(cur.keys())[0]
             cur[key]['English Subject']
-            stack.append((cur[key]['English Subject'],cur[key]['Chinese Subject']))
+            stack.append((cur[key]['English Subject'], cur[key]['Chinese Subject']))
 
         for i in range(len(stack)):
             en_subject = stack[i][0]

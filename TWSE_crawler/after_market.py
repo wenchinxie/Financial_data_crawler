@@ -8,7 +8,7 @@ from Financial_data_crawler.db.clients import get_mongodb_news_conn
 from Financial_data_crawler.db.router import update_data
 
 # Replace requests method with httpx
-from Financial_data_crawler.DataReader import HttpClient
+from Financial_data_crawler.DataReader import HTTPClient
 
 class TWDay_Trade_Info:
 
