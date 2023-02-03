@@ -14,14 +14,16 @@ def df_cleaner(df: pd.DataFrame) -> pd.DataFrame:
     for col in need_change_col:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce')
-            df[col].fillna(0, inplace= True)
+            df[col].fillna(0, inplace=True)
 
     return df
 
-def rename_col(df: pd.DataFrame, col_mapping) -> pd.DataFrame:
-    rename_col_df = df.rename(columns=self.twlisted_stock_col)
+
+def rename_col(df: pd.DataFrame, col_mapping: dict) -> pd.DataFrame:
+    rename_col_df = df.rename(columns=col_mapping)
     rename_col_df = rename_col_df[col_mapping.values()]
     return rename_col_df
+
 
 class TWListed_opendata_cleaner:
     def __init__(self):
@@ -39,7 +41,7 @@ class TWListed_opendata_cleaner:
         }
 
     def Listed_Day_Transaction_Info(self, df: pd.DataFrame) -> List[dict]:
-        rename_col = rename_col(df, self.twlisted_stock_col)
+        rename_col_df = rename_col(df, self.twlisted_stock_col)
         clean_df = df_cleaner(rename_col_df)
 
         return clean_df.to_dict(orient='records')
@@ -61,9 +63,9 @@ class TWOTC_opendata_cleaner:
         }
 
     def OTC_Day_Transaction_Info(self, df: pd.DataFrame) -> List[dict]:
-        rename_col = rename_col(df, self.twotc_stock_col)
+        rename_col_df = rename_col(df, self.twotc_stock_col)
         clean_df = df_cleaner(rename_col_df)
-        return df.to_dict(orient='records')
+        return clean_df.to_dict(orient='records')
 
 
 def turntoint(s: str) -> str:
@@ -89,16 +91,23 @@ class TWOther_cleaner:
             '證券代號': 'StockID',
             '證券名稱': 'Name',
             '暫停現股賣出後現款買進當沖註記': 'BuyAfterSale',
-            '當日沖銷交易成交股數': 'Volume',
-            '當日沖銷交易買進成交金額': 'BuyAmount',
-            '當日沖銷交易賣出成交金額': 'SellAmount'
+            '當日沖銷交易成交股數': 'DayTradeVolume',
+            '當日沖銷交易買進成交金額': 'DayTradeBuyAmount',
+            '當日沖銷交易賣出成交金額': 'DayTradeSellAmount'
         }
+
 
         headers = [header_mapping[header.text] for header in table.find_all('tr')[1].find_all('td')]
         res = []
         for i, n in enumerate(table.find_all('tr')[2:]):
-            d = {header: turntoint(info.text, j, 3) for header, (j, info) in zip(headers, enumerate(n.find_all('td')))}
-            d['Type'] = 'All'
-            res.append(d)
+            required_data = {}
+            for header, data in zip(headers, n.find_all('td')):
+                new_data = data
+                if header in ['DayTradeVolume', 'DayTradeBuyAmount', 'DayTradeSellAmount']:
+                    new_data = turntoint(data)
+
+                required_data[header] = new_data
+
+            res.append(required_data)
 
         return res

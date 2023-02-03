@@ -2,7 +2,7 @@ import httpx
 import chardet
 from faker import Faker
 from bs4 import BeautifulSoup
-
+import datetime
 
 def autodetect(content):
     return chardet.detect(content).get("encoding")
@@ -29,6 +29,10 @@ class HTTPClient:
         soup = BeautifulSoup(response.text, 'html.parser')
         market_day = soup.find('span', {'class': "C(#6e7780) Fz(12px) Fw(b)"}).text
         market_day = market_day.split(' ')[2]
+
+        if market_day == '-':
+            return datetime.datetime.today().strftime("%Y-%m-%d")
+
         return market_day
 
     @staticmethod
