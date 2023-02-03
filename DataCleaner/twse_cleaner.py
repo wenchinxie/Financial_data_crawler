@@ -3,18 +3,25 @@ from typing import List
 from bs4 import BeautifulSoup
 
 
-def df_cleaner(df: pd.DataFrame, col_mapping: dict):
+def df_cleaner(df: pd.DataFrame) -> pd.DataFrame:
     """
     Change column name and remove the prices containing null and weird words in order to store in database
     """
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError('Please In Pandas DataFrame Format')
 
-    df = df.rename(columns=col_mapping)
-    df = df[col_mapping.values()]
-    if df['Max'].dtype != float:
-        df = df[~df['Max'].str.contains('-| ')]
+    need_change_col = ['Max', 'Change']
+    for col in need_change_col:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+            df[col].fillna(0, inplace= True)
 
     return df
 
+def rename_col(df: pd.DataFrame, col_mapping) -> pd.DataFrame:
+    rename_col_df = df.rename(columns=self.twlisted_stock_col)
+    rename_col_df = rename_col_df[col_mapping.values()]
+    return rename_col_df
 
 class TWListed_opendata_cleaner:
     def __init__(self):
@@ -32,9 +39,10 @@ class TWListed_opendata_cleaner:
         }
 
     def Listed_Day_Transaction_Info(self, df: pd.DataFrame) -> List[dict]:
-        df = df_cleaner(df, self.twlisted_stock_col)
+        rename_col = rename_col(df, self.twlisted_stock_col)
+        clean_df = df_cleaner(rename_col_df)
 
-        return df.to_dict(orient='records')
+        return clean_df.to_dict(orient='records')
 
 
 class TWOTC_opendata_cleaner:
@@ -53,15 +61,17 @@ class TWOTC_opendata_cleaner:
         }
 
     def OTC_Day_Transaction_Info(self, df: pd.DataFrame) -> List[dict]:
-        df = df_cleaner(df, self.twotc_stock_col)
+        rename_col = rename_col(df, self.twotc_stock_col)
+        clean_df = df_cleaner(rename_col_df)
         return df.to_dict(orient='records')
 
 
-def turntoint(s: str, i: int, minimium: int):
-    if i < minimium:
-        return s
+def turntoint(s: str) -> str:
+    if not isinstance(s, str):
+        raise TypeError(f'{s} must be a string')
 
     new = s.replace(',', '')
+
     if not (new[0].isnumeric() and new[-1].isnumeric()):
         new = '0'
 
