@@ -1,0 +1,20 @@
+
+DayTradeTestData:
+  -
+    - '''<table id="table"><thead> <tr> <th colspan="6" scope="col"> <div>112年02月02日當日沖銷交易標的及成交量值</div> </th> </tr> <tr> <td>證券代號</td> <td>證券名稱</td> <td>暫停現股賣出後現款買進當沖註記</td> <td>當日沖銷交易成交股數</td> <td>當日沖銷交易買進成交金額</td> <td>當日沖銷交易賣出成交金額</td> </tr> </thead> <tbody> <tr> <td>0050</td> <td>元大台灣50</td> <td></td> <td>1,077,000</td> <td>129,880,000</td> <td>130,018,150</td> </tr> </tbody> </table>'''
+    - StockID: '0050'
+      Name: '元大台灣50'
+      BuyAfterSale: ''
+      DayTradeVolume: '1077000'
+      DayTradeBuyAmount: '129880000'
+      DayTradeSellAmount: '130018150'
+  -
+    - '''<table id="table"><thead> <tr> <th>證券代號</th> <th>證券名稱</th> <th>暫停現股賣出後<br>現款買進當沖註記</br></th> <th>當日沖銷交易成交股數</th> <th>當日沖銷交易買進成交金額</th> <th>當日沖銷交易賣出成交金額</th> </tr> </thead> <tbody> <tr> <td align="right">00679B</td> <td align="right">元大美債20年</td> <td align="right"> </td> <td align="right">880,000</td> <td align="right">28,376,500</td> <td align="right">28,388,270</td> </tr> </tbody> </table>'''
+    - StockID: '00679B'
+      Name: '元大美債20年'
+      BuyAfterSale: ''
+      DayTradeVolume: '880000'
+      DayTradeBuyAmount: '28376500'
+      DayTradeSellAmount: '28388270'
+
+

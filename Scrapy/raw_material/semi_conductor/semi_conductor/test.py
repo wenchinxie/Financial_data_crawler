@@ -1,4 +1,5 @@
 from faker import Faker
-fake=Faker()
 
-print( fake.chrome())
+fake = Faker()
+
+print(fake.chrome())

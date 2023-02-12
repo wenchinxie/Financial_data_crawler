@@ -2,7 +2,6 @@ import pandas as pd
 
 
 class DataFrame:
-
     @staticmethod
     def get_raw_data(api: str):
         try:
@@ -11,4 +10,3 @@ class DataFrame:
             data = pd.DataFrame()
 
         return data
-    

@@ -9,7 +9,6 @@ config = config_setup.config
 
 
 def main(crawler_type: str, crawler_name: str):
-
     # Connect to Database
     client = clients.MongoClient(crawler_type, crawler_name)
 
@@ -24,10 +23,12 @@ def main(crawler_type: str, crawler_name: str):
         return None
 
     # Parse Data
-    func = importlib.import_module(f'Financial_data_crawler.{crawler_type}_crawler.CrawlerPool')
+    func = importlib.import_module(
+        f"Financial_data_crawler.{crawler_type}_crawler.CrawlerPool"
+    )
 
     # Get Raw Data
-    dataset = getattr(func, 'crawler_select')(crawler_name)
+    dataset = getattr(func, "crawler_select")(crawler_name)
 
     # Update to database
     r.update_data(dataset, update_date)
@@ -40,11 +41,11 @@ def date_compare(r, crawler_name: str):
     update_date = date_checker.update
     print(recent_date, update_date)
 
-    assert update_date is not None, 'Please Check the update day, should not be None'
+    assert update_date is not None, "Please Check the update day, should not be None"
 
     # if not recent_date == 'Update' or recent_date == update_date:
     if recent_date == update_date:
-        print('Already Up to date')
+        print("Already Up to date")
         return None
 
     return update_date
@@ -52,7 +53,7 @@ def date_compare(r, crawler_name: str):
 
 class DateChecker:
     def __init__(self, crawler_name: str):
-        self.__check_type = config.get('DateCheck', crawler_name)
+        self.__check_type = config.get("DateCheck", crawler_name)
         self.update = getattr(self, self.__check_type)()
 
     @staticmethod
@@ -65,7 +66,7 @@ class DateChecker:
         """
         Return each quarter time for validation of date checker function
         """
-        '''
+        """
         today = datetime.datetime.today()
         cur_year = today.year
         candidates = [
@@ -78,8 +79,6 @@ class DateChecker:
 
         closest = max(candidates, key=lambda d: abs(today - d))
         return closest.strftime("%Y-%m-%d")
-        '''
+        """
 
         return datetime.datetime.today().strftime("%Y-%m-%d %H:%M:%S")
-
-
