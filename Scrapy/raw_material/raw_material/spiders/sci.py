@@ -15,7 +15,7 @@ class SciSpider(scrapy.Spider):
     name = "sci"
     allowed_domains = ["www.sci99.com/"]
 
-    custom_settings = {"RETRY_TIMES": 300, "RETRY_MAX_TIME": 1}
+    custom_settings = {"RETRY_TIMES": 1}
 
     def start_requests(self):
         user_agent = fake.user_agent()

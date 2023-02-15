@@ -39,5 +39,9 @@ def test_db():
     assert Broker_Info.objects().count()==85
     client.close()
 
+def test_error_broker():
+    address = "https://just2.entrust.com.tw/z/zg/zgb/zgb0.djhtm?a=9100&b=0039003100380075&c=E"
+
+
 
 
