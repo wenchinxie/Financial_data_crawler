@@ -40,7 +40,7 @@ def _extract_code_and_name(bs4_obj: BeautifulSoup):
     return stockid, stockname
 
 
-class SciSpider(scrapy.Spider):
+class SelBrokerSpider(scrapy.Spider):
     name = "sel_broker"
     allowed_domains = [
         "moneydj.emega.com.tw",

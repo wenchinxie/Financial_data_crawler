@@ -43,6 +43,35 @@ def test_db():
 
 
 def test_error_broker():
-    address = (
-        "https://just2.entrust.com.tw/z/zg/zgb/zgb0.djhtm?a=9100&b=0039003100380075&c=E"
-    )
+
+    from faker import Faker
+    import scrapy
+
+    fake = Faker()
+
+    url = 'https://just2.entrust.com.tw/z/zg/zgb/zgb0.djhtm?a=5920&b=5920&c=E'
+
+    class test_sel_broker(sel_broker.SelBrokerSpider):
+
+        def start_requests(self):
+
+            meta = {
+                "BrokerCode": '5920',
+                "BrokerName": '元富',
+                "BranchName": '5920',
+                "BranchCode": '元富',
+            }
+
+            yield scrapy.Request(
+                url=url,
+                callback=self.parse,
+                headers={"User-Agent": fake.user_agent()},
+                meta=url["meta"],
+            )
+
+
+
+
+
+
+
