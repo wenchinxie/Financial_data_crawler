@@ -1,7 +1,7 @@
 import re
 import random
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import scrapy
 from faker import Faker
@@ -11,11 +11,12 @@ from loguru import logger
 from Financial_data_crawler.db.clients import MongoClient
 from Financial_data_crawler.db.ChipModels import Broker_Info, Broker_Transaction
 
+
 client = MongoClient("Scrapy", "sel_broker")
 fake = Faker()
 
 
-def _extract_code_and_name(bs4_obj: BeautifulSoup):
+def _extract_code_and_name(bs4_obj: BeautifulSoup)->str:
     pattern = r"GenLink2stk\('(\w+)','([^']+)'\);"
     name_obj = bs4_obj.find("script")
 
@@ -39,6 +40,57 @@ def _extract_code_and_name(bs4_obj: BeautifulSoup):
 
     return stockid, stockname
 
+def _get_api_nontrading_day(default_date:str):
+    """
+    When implementing historical data fetching,
+    programming will fetch the earliest day .
+    If the day is a holiday or nontrading day,
+    then automatically move backward to the day before it.
+    """
+
+    import requests
+
+    def nontrading_day_test(date_str:str)->str:
+        """
+        Check whether the market opened that day
+        """
+        day_plus_one_day = _day_move_one_day(date_str, plus=True)
+        url = f'https://just2.entrust.com.tw/z/zg/zgb/zgb0.djhtm?a=5920&b=5920&c=E&e={date_str}&f={day_plus_one_day}'
+        print(url)
+        response = requests.get(url, headers={'User-Agent': fake.user_agent()})
+        soup = BeautifulSoup(response.text, 'html.parser')
+        compare_date_str = soup.find("div", {"class": "t11"}).text[-8:]
+        print(compare_date_str)
+
+        try:
+            report_date = datetime.strptime(compare_date_str, '%Y%m%d')
+            report_date_str = report_date.strftime('%Y-%#m-%#d')
+            return report_date_str == date_str
+
+        except:
+            return False
+
+    while not nontrading_day_test(default_date):
+        default_date = _day_move_one_day(default_date)
+
+    return default_date
+
+def _day_move_one_day(date_str:str, plus:bool = False)->str:
+
+    # Convert the string to a datetime object
+    date = datetime.strptime(date_str, '%Y-%m-%d')
+
+    # Subtract one day
+    one_day = timedelta(days=1)
+
+    if plus:
+        new_date = date + one_day
+    else:
+        new_date = date - one_day
+
+    # Convert back to a string in the same format
+    return new_date.strftime('%Y-%#m-%#d')
+
 
 class SelBrokerSpider(scrapy.Spider):
     name = "sel_broker"
@@ -54,15 +106,32 @@ class SelBrokerSpider(scrapy.Spider):
 
     custom_settings = {"RETRY_MAX_TIME": 0}
 
-    def __init__(self, date: str = None):
+    def __init__(self, date: str = None, auto_date:bool = False):
         self.date = date
+
+        if auto_date:
+            # Get the earliest date from the database
+            earliest_transaction = Broker_Transaction.objects().first()
+
+            if earliest_transaction is not None:
+                # Convert the date to a reasonable format
+                earliest_date = datetime.strptime(earliest_transaction['Date'], '%Y-%m-%d')
+                earliest_date_str = earliest_date.strftime('%Y-%#m-%#d')
+
+                # Check if the date is a trading day
+                reasonable_date = _get_api_nontrading_day(earliest_date_str)
+                self.date = reasonable_date
+            else:
+                # Handle the case where there are no transactions in the database
+                self.date = None
 
     def start_requests(self):
         def produce_broker_branch_urls(date: str = None):
             brokers = Broker_Info.objects()
             base_url = r"/z/zg/zgb/zgb0.djhtm?"
             if date:
-                date_str = f"&e={date}&f={date}"  # Only parse daily info
+                one_day_after = _day_move_one_day(date)
+                date_str = f"&e={date}&f={one_day_after}"  # Only parse daily info
             else:
                 date_str = ""
 

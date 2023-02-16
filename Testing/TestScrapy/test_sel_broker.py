@@ -70,7 +70,20 @@ def test_error_broker():
             )
 
 
+def test_auto_date_increase():
 
+    date_str = "2023-2-3"
+    new_date_str = sel_broker._day_move_one_day(date_str)
+    new_date_plus_str = sel_broker._day_move_one_day(date_str,plus=True)
+
+    assert new_date_str  == '2023-2-2'
+    assert new_date_plus_str == '2023-2-4'
+
+def test_nontrading_date():
+
+    new_date = sel_broker._get_api_nontrading_day('2023-2-12')
+
+    assert new_date == '2023-2-10'
 
 
 
