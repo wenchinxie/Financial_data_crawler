@@ -55,7 +55,7 @@ def _get_api_nontrading_day(default_date:str):
         Check whether the market opened that day
         """
         day_plus_one_day = _day_move_one_day(date_str, plus=True)
-        url = f'https://just2.entrust.com.tw/z/zg/zgb/zgb0.djhtm?a=5920&b=5920&c=E&e={date_str}&f={day_plus_one_day}'
+        url = f'https://just2.entrust.com.tw/z/zg/zgb/zgb0.djhtm?a=5920&b=5920&c=E&e={date_str}&f={date_str}'
         print(url)
         response = requests.get(url, headers={'User-Agent': fake.user_agent()})
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -115,8 +115,7 @@ class SelBrokerSpider(scrapy.Spider):
 
             if earliest_transaction is not None:
                 # Convert the date to a reasonable format
-                earliest_date = datetime.strptime(earliest_transaction['Date'], '%Y-%m-%d')
-                earliest_date_str = earliest_date.strftime('%Y-%#m-%#d')
+                earliest_date_str = _day_move_one_day(earliest_transaction['Date'])
 
                 # Check if the date is a trading day
                 reasonable_date = _get_api_nontrading_day(earliest_date_str)
@@ -130,8 +129,8 @@ class SelBrokerSpider(scrapy.Spider):
             brokers = Broker_Info.objects()
             base_url = r"/z/zg/zgb/zgb0.djhtm?"
             if date:
-                one_day_after = _day_move_one_day(date)
-                date_str = f"&e={date}&f={one_day_after}"  # Only parse daily info
+                # one_day_after = _day_move_one_day(date)
+                date_str = f"&e={date}&f={date}"  # Only parse daily info
             else:
                 date_str = ""
 
