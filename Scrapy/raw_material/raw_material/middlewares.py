@@ -2,7 +2,11 @@
 #
 # See documentation in:
 # https://docs.scrapy.org/en/latest/topics/spider-middleware.html
+import time
 
+from scrapy.downloadermiddlewares.retry import RetryMiddleware
+from scrapy.utils.response import response_status_message
+from scrapy.contrib.throttle import AutoThrottle
 from scrapy import signals
 
 # useful for handling different item types with a single interface
@@ -101,3 +105,39 @@ class RawMaterialDownloaderMiddleware:
 
     def spider_opened(self, spider):
         spider.logger.info("Spider opened: %s" % spider.name)
+
+class CustomRetryMiddleware(RetryMiddleware):
+    def __init__(self, settings):
+        super().__init__(settings)
+        self.domain_errors = {}
+        self.max_domain_errors = 5  # adjust this as needed
+
+    def process_response(self, request, response, spider):
+        if response.status == 504:
+            domain = request.url.split("/")[2]
+            if domain in self.domain_errors:
+                self.domain_errors[domain] += 1
+            else:
+                self.domain_errors[domain] = 1
+            if self.domain_errors[domain] >= self.max_domain_errors:
+                self.logger.debug(f"Pausing for 1 hour due to repeated 504 errors for {domain}")
+                time.sleep(3600)
+                self.domain_errors[domain] = 0
+            self.logger.debug(f"Retrying {request.url} due to 504 error")
+            return self._retry(request, response.status, spider) or response
+        return super().process_response(request, response, spider)
+
+class CustomAutoThrottle(AutoThrottle):
+    def __init__(self, crawler):
+        super().__init__(crawler)
+        self.delay = 0.5  # initial delay
+
+    def _adjust_delay(self, slot, latency, response):
+        if response.status == 504:
+            self.delay *= 2  # double the delay for 504 errors
+        else:
+            self.delay = max(self.mindelay, self.delay - self.delay/10.0)
+        return self.delay
+
+    def log(self, request, spider):
+        pass  # disable logging
