@@ -43,6 +43,48 @@ def test_db():
 
 
 def test_error_broker():
-    address = (
-        "https://just2.entrust.com.tw/z/zg/zgb/zgb0.djhtm?a=9100&b=0039003100380075&c=E"
-    )
+
+    from faker import Faker
+    import scrapy
+
+    fake = Faker()
+
+    url = 'https://just2.entrust.com.tw/z/zg/zgb/zgb0.djhtm?a=5920&b=5920&c=E'
+
+    class test_sel_broker(sel_broker.SelBrokerSpider):
+
+        def start_requests(self):
+
+            meta = {
+                "BrokerCode": '5920',
+                "BrokerName": '元富',
+                "BranchName": '5920',
+                "BranchCode": '元富',
+            }
+
+            yield scrapy.Request(
+                url=url,
+                callback=self.parse,
+                headers={"User-Agent": fake.user_agent()},
+                meta=url["meta"],
+            )
+
+
+def test_auto_date_increase():
+
+    date_str = "2023-2-9"
+    new_date_str = sel_broker._day_move_one_day(date_str)
+    new_date_plus_str = sel_broker._day_move_one_day(date_str,plus=True)
+
+    assert new_date_str  == '2023-2-8'
+    assert new_date_plus_str == '2023-2-10'
+
+def test_nontrading_date():
+
+    new_date = sel_broker._get_api_nontrading_day('2023-2-10')
+
+    assert new_date == '2023-2-10'
+
+
+
+

@@ -2,7 +2,9 @@
 #
 # See documentation in:
 # https://docs.scrapy.org/en/latest/topics/spider-middleware.html
+import time
 
+from scrapy.downloadermiddlewares.retry import RetryMiddleware
 from scrapy import signals
 
 # useful for handling different item types with a single interface
@@ -101,3 +103,28 @@ class RawMaterialDownloaderMiddleware:
 
     def spider_opened(self, spider):
         spider.logger.info("Spider opened: %s" % spider.name)
+
+class MaxRetriesExceeded(Exception):
+    pass
+
+class CustomRetryMiddleware(RetryMiddleware):
+    def __init__(self, settings):
+        super().__init__(settings)
+        self.domain_errors = {}
+        self.max_domain_errors = 5  # adjust this as needed
+
+    def process_response(self, request, response, spider):
+        if response.status == 504:
+            domain = request.url.split("/")[2]
+            if domain in self.domain_errors:
+                self.domain_errors[domain] += 1
+            else:
+                self.domain_errors[domain] = 1
+            if self.domain_errors[domain] >= self.max_domain_errors:
+                self.logger.debug(f"Maximum number of 504 errors exceeded for {domain}")
+                raise MaxRetriesExceeded()
+            self.logger.debug(f"Retrying {request.url} due to 504 error")
+            return self._retry(request, response.status, spider) or response
+        return super().process_response(request, response, spider)
+
+

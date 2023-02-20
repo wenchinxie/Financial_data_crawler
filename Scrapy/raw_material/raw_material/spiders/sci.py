@@ -6,6 +6,7 @@ import time
 
 from Financial_data_crawler.db.clients import MongoClient
 from Financial_data_crawler.db.RMModel import Raw_Material
+from Financial_data_crawler.Scrapy.raw_material.raw_material.middlewares import MaxRetriesExceeded
 
 client = MongoClient("Scrapy", "Raw_Material")
 fake = Faker()
@@ -15,7 +16,7 @@ class SciSpider(scrapy.Spider):
     name = "sci"
     allowed_domains = ["www.sci99.com/"]
 
-    custom_settings = {"RETRY_TIMES": 1}
+    custom_settings = {"RETRY_TIMES": 3}
 
     def start_requests(self):
         user_agent = fake.user_agent()
@@ -376,8 +377,9 @@ class SciSpider(scrapy.Spider):
         for url in urls:
             time.sleep(round(random.uniform(1, 4), 2))
             yield scrapy.Request(
-                url=url, callback=self.parse, headers={"User-Agent": fake.user_agent()}
-            )
+                url=url, callback=self.parse,
+                headers={"User-Agent": fake.user_agent()},
+                errback= self.handle_504_error)
 
     def parse(self, response):
         def clean(string):
@@ -424,6 +426,15 @@ class SciSpider(scrapy.Spider):
             spider.spider_closed, signal=scrapy.signals.spider_closed
         )
         return spider
+
+    def handle_504_error(self, failure):
+        if failure.check(MaxRetriesExceeded):
+            self.logger.warning("Maximum number of 504 errors exceeded. Pausing for 1 hour.")
+            time.sleep(3600)
+            self.logger.warning("Resuming spider.")
+            return self.make_requests_from_url(failure.request.url)
+        else:
+            return failure
 
     def spider_closed(self, spider):
         client.close()
