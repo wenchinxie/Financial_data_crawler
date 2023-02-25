@@ -23,8 +23,6 @@ class SciSpider(scrapy.Spider):
 
         urls = [
             "https://www.sci99.com/monitor-1-0.html",
-            "https://www.sci99.com/monitor-1-0.html",
-            "https://www.sci99.com/monitor-1-0.html",
             "https://www.sci99.com/monitor-9180-0.html",
             "https://www.sci99.com/monitor-9179-0.html",
             "https://www.sci99.com/monitor-439-0.html",

@@ -121,9 +121,9 @@ class CustomRetryMiddleware(RetryMiddleware):
             else:
                 self.domain_errors[domain] = 1
             if self.domain_errors[domain] >= self.max_domain_errors:
-                self.logger.debug(f"Maximum number of 504 errors exceeded for {domain}")
+                spider.logger.debug(f"Maximum number of 504 errors exceeded for {domain}")
                 raise MaxRetriesExceeded()
-            self.logger.debug(f"Retrying {request.url} due to 504 error")
+            spider.logger.debug(f"Retrying {request.url} due to 504 error")
             return self._retry(request, response.status, spider) or response
         return super().process_response(request, response, spider)
 
