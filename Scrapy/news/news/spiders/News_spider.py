@@ -43,7 +43,7 @@ def get_urls(start_date=0, end_date=0):
 
 class NewsSpider(scrapy.Spider):
     name = "News"
-    allowed_domains = ["https://news.cnyes.com/"]
+    allowed_domains = ["https://www.cnyes.com/"]
 
     def __init__(self, start_date=0, end_date=0):
         self.start_urls = get_urls(start_date, end_date)
@@ -63,7 +63,9 @@ class NewsSpider(scrapy.Spider):
             "Content": content,
         }
 
-        self.__docs(**data).save()
+        print(headline)
+        print(self.__docs)
+        self.__docs.objects(Headline=headline).modify(upsert=True,**data)
 
         # Update companies' profile
         self.tag_cleaner.update_tags(tags, date)

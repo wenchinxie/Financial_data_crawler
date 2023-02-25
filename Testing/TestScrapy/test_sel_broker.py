@@ -85,6 +85,15 @@ def test_nontrading_date():
 
     assert new_date == '2023-2-10'
 
+def test_auto_date_return():
+
+    from Financial_data_crawler.db.clients import MongoClient
+    from Financial_data_crawler.db.ChipModels import Broker_Info, Broker_Transaction
+    client = MongoClient("Scrapy", "sel_broker")
+    earliest_transaction = Broker_Transaction.objects().order_by('Date').first()
+    assert earliest_transaction['Date'] == '2023-02-09'
+    client.close()
+
 
 
 

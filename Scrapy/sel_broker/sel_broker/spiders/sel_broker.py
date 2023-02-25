@@ -91,6 +91,9 @@ def _day_move_one_day(date_str:str, plus:bool = False)->str:
     # Convert back to a string in the same format
     return new_date.strftime('%Y-%#m-%#d')
 
+def _reformat_date_str(date_str:str):
+    date = datetime.strptime(date_str, '%Y-%m-%d')
+    return date.strftime('%Y-%m-%d')
 
 class SelBrokerSpider(scrapy.Spider):
     name = "sel_broker"
@@ -111,7 +114,7 @@ class SelBrokerSpider(scrapy.Spider):
 
         if auto_date:
             # Get the earliest date from the database
-            earliest_transaction = Broker_Transaction.objects().first()
+            earliest_transaction = Broker_Transaction.objects().order_by('Date').first()
 
             if earliest_transaction is not None:
                 # Convert the date to a reasonable format
@@ -147,6 +150,17 @@ class SelBrokerSpider(scrapy.Spider):
                     broker_d = broker["BrokerBranch"]
 
                 for branch in broker_d.keys():
+
+                    '''
+                    # Primary key: broker_code,branch_code,date
+                    # Don't add duplicated records
+                    if Broker_Transaction.objects(
+                        Date=_reformat_date_str(self.date),
+                        BrokerCode=broker_code,
+                        BranchCode=branch,
+                        ).count()>0:
+                        continue;
+                    '''
                     if re.search("[A-Za-z]", branch):
                         branch_code = "".join(
                             [format(ord(c), "02x").zfill(4) for c in branch]
