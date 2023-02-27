@@ -63,8 +63,6 @@ class NewsSpider(scrapy.Spider):
             "Content": content,
         }
 
-        print(headline)
-        print(self.__docs)
         self.__docs.objects(Headline=headline).modify(upsert=True,**data)
 
         # Update companies' profile

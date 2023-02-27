@@ -49,17 +49,17 @@ def test_error_broker():
 
     fake = Faker()
 
-    url = 'https://just2.entrust.com.tw/z/zg/zgb/zgb0.djhtm?a=5920&b=5920&c=E'
+    url = 'https://sjmain.esunsec.com.tw/z/zg/zgb/zgb0.djhtm?a=1040&b=0031003000340044'
 
     class test_sel_broker(sel_broker.SelBrokerSpider):
 
         def start_requests(self):
 
             meta = {
-                "BrokerCode": '5920',
-                "BrokerName": '元富',
-                "BranchName": '5920',
-                "BranchCode": '元富',
+                "BrokerCode": '1040',
+                "BrokerName": '臺銀',
+                "BranchName": '104D',
+                "BranchCode": '臺銀-金山',
             }
 
             yield scrapy.Request(
