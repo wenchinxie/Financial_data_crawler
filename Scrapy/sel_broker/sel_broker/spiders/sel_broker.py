@@ -98,16 +98,19 @@ def _reformat_date_str(date_str:str):
 class SelBrokerSpider(scrapy.Spider):
     name = "sel_broker"
     allowed_domains = [
-        "moneydj.emega.com.tw",
-        "5850web.moneydj.com",
-        "stock.capital.com.tw",
-        "newjust.masterlink.com.tw",
-        "just2.entrust.com.tw",
-        "sjmain.esunsec.com.tw",
-        "jsjustweb.jihsun.com.tw",
+        "moneydj.emega.com.tw/",
+        "stock.capital.com.tw/",
+        "newjust.masterlink.com.tw/",
+        "just2.entrust.com.tw/",
+        "sjmain.esunsec.com.tw/",
+        '5850web.moneydj.com/',
+        'fubon-ebrokerdj.fbs.com.tw/'
     ]
 
-    custom_settings = {"RETRY_MAX_TIME": 0}
+    custom_settings = {
+        'RETRY_DELAY': 60,
+        'RETRY_TIMES': 3, # Set the maximum number of times to retry failed requests to 3
+    }
 
     def __init__(self, date: str = None, auto_date:bool = False):
         self.date = date
@@ -130,7 +133,7 @@ class SelBrokerSpider(scrapy.Spider):
     def start_requests(self):
         def produce_broker_branch_urls(date: str = None):
             brokers = Broker_Info.objects()
-            base_url = r"/z/zg/zgb/zgb0.djhtm?"
+            base_url = r"z/zg/zgb/zgb0.djhtm?"
             if date:
                 # one_day_after = _day_move_one_day(date)
                 date_str = f"&e={date}&f={date}"  # Only parse daily info
@@ -188,17 +191,29 @@ class SelBrokerSpider(scrapy.Spider):
             return start_urls
 
         start_urls = produce_broker_branch_urls(self.date)
-        logger.info(start_urls)
-        for url in start_urls:
+
+        domains_num = len(self.allowed_domains)
+        logger.info(f'request numbers-----{len(start_urls)}')
+        for num,url in enumerate(start_urls):
             time.sleep(round(random.uniform(1, 4), 2))
-            domain = random.choice(self.allowed_domains)
-            full_url = "https://" + domain + url["url"]
+            domain = self.allowed_domains[divmod(num,domains_num)[1]]
+            if  domain != '5850web.moneydj.com/':
+                http_header = "https://"
+            else:
+                http_header = "http://"
+            full_url = http_header + domain + url["url"]
+
+            headers = {
+                "User-Agent": fake.user_agent()
+            }
+
             logger.info(full_url)
+            logger.info(headers)
             yield scrapy.Request(
                 url=full_url,
                 callback=self.parse,
-                headers={"User-Agent": fake.user_agent()},
                 meta=url["meta"],
+                headers = headers
             )
 
     def parse(self, response):
@@ -245,3 +260,4 @@ class SelBrokerSpider(scrapy.Spider):
                     BrokerCode=data["BrokerCode"],
                     BranchCode=data["BranchCode"],
                 ).modify(upsert=True, **data)
+
