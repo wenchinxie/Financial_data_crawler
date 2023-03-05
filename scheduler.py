@@ -28,10 +28,10 @@ def main(crawler_type: str, crawler_name: str):
     )
 
     # Get Raw Data
-    dataset = getattr(func, "crawler_select")(crawler_name)
-
+    dataset ,wargs = getattr(func, "crawler_select")(crawler_name)
+    print('Dataset!',dataset)
     # Update to database
-    r.update_data(dataset, update_date)
+    r.update_data(dataset, update_date ,*wargs)
     client.close()
 
 

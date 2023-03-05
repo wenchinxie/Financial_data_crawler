@@ -35,7 +35,7 @@ class TWFinancialReport:
         with multiprocessing.Pool() as pool:
             dataset = pool.map(TWFinancialReport.run_process, files)
 
-        return dataset
+        return dataset ,{}
 
     @staticmethod
     def run_process(file):

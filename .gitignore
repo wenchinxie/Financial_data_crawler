@@ -6,9 +6,16 @@ __pycache__/
 # C extensions
 *.so
 
+#data related
+sel_broker_data/
+completed_sel_broker_data/
+completed_zip/
+
 # database
 *.db
 *.sqlite
+*.zip
+
 
 # connection secret
 db/
@@ -39,6 +46,7 @@ MANIFEST
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+*.exe
 
 # Installer logs
 pip-log.txt

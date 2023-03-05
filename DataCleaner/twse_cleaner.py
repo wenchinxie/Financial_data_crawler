@@ -44,7 +44,43 @@ class TWListed_opendata_cleaner:
         rename_col_df = rename_col(df, self.twlisted_stock_col)
         clean_df = df_cleaner(rename_col_df)
 
-        return clean_df.to_dict(orient="records")
+        return clean_df.to_dict(orient="records") , []
+
+    def Listed_Spread_Shareholdings(self, df: pd.DataFrame) -> List[dict]:
+        col_mapping ={
+            '資料日期': 'Date',
+            '證券代號': 'StockID',
+            '持股分級': 'Level',
+            '人數': 'People',
+            '股數': 'Shares',
+            '占集保庫存數比例%': 'Percent'
+        }
+
+        levels_mapping = {
+            1 : '1-999',
+            2 : '1000-5000',
+            3 : '5001-10000',
+            4 : '10001-15000',
+            5 : '15001-20000',
+            6 : '20001-30000',
+            7 : '30001-40000',
+            8 : '40001-50000',
+            9 : '50001-100000',
+            10 : '100001-200000',
+            11 : '200001-400000',
+            12 : '400001-600000',
+            13 : '600001-800000',
+            14 : '800001-1000000',
+            15 : '1000001',
+            17 : 'Sum'
+        }
+
+        rename_col_df = rename_col(df , col_mapping)
+        remove_redundancy_df = rename_col_df[rename_col_df['Level']!=16]
+        remove_redundancy_df['Level'] = remove_redundancy_df['Level'].map(levels_mapping)
+        remove_redundancy_df['Date'] =pd.to_datetime(remove_redundancy_df['Date'],format='%Y%m%d')
+        remove_redundancy_df['Date']=remove_redundancy_df['Date'].dt.strftime('%Y-%m-%d')
+        return remove_redundancy_df.to_dict(orient="records") , ['Level']
 
 
 class TWOTC_opendata_cleaner:
@@ -65,7 +101,7 @@ class TWOTC_opendata_cleaner:
     def OTC_Day_Transaction_Info(self, df: pd.DataFrame) -> List[dict]:
         rename_col_df = rename_col(df, self.twotc_stock_col)
         clean_df = df_cleaner(rename_col_df)
-        return clean_df.to_dict(orient="records")
+        return clean_df.to_dict(orient="records") , []
 
 
 def turntoint(s: str) -> str:
@@ -99,7 +135,7 @@ class TWOther_cleaner:
         for table in [tables[1], tables[3]]:
             self.parse_day_trade_table(table)
 
-        return self.res
+        return self.res, []
 
     def parse_day_trade_table(self, table):
         headers = []
@@ -142,3 +178,5 @@ class TWOther_cleaner:
                 required_data[header] = new_data
 
             self.res.append(required_data)
+
+
