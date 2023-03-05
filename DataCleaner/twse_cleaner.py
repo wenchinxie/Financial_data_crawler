@@ -135,7 +135,7 @@ class TWOther_cleaner:
         for table in [tables[1], tables[3]]:
             self.parse_day_trade_table(table)
 
-        return self.res
+        return self.res, []
 
     def parse_day_trade_table(self, table):
         headers = []
@@ -178,3 +178,5 @@ class TWOther_cleaner:
                 required_data[header] = new_data
 
             self.res.append(required_data)
+
+
