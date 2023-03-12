@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
 import tracemalloc
 
+import chardet
 from bs4 import BeautifulSoup
 from loguru import logger
 from selenium import webdriver
@@ -17,7 +18,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from mongoengine import *
-from pymongo import UpdateOne
+from pymongo import UpdateOne,errors
+from faker import Faker
 
 from Financial_data_crawler.db.clients import MongoClient,get_motor_conn
 from Financial_data_crawler.db.ChipModels import Broker_Info, Broker_Transaction
@@ -40,7 +42,7 @@ def _get_api_nontrading_day(default_date:str):
         day_plus_one_day = _day_move_one_day(date_str, plus=True)
         url = f'https://just2.entrust.com.tw/z/zg/zgb/zgb0.djhtm?a=5920&b=5920&c=E&e={date_str}&f={date_str}'
         print(url)
-        response = requests.get(url, headers={'User-Agent': fake.user_agent()})
+        response = requests.get(url, headers={'User-Agent': Faker().user_agent()})
         soup = BeautifulSoup(response.text, 'html.parser')
         compare_date_str = soup.find("div", {"class": "t11"}).text[-8:]
         print(compare_date_str)
@@ -90,7 +92,7 @@ class SelBroker:
 
             if earliest_transaction is not None:
                 # Convert the date to a reasonable format
-                earliest_date_str = _day_move_one_day(earliest_transaction['Date'])
+                earliest_date_str = _day_move_one_day(earliest_transaction['Date'].strftime('%Y-%m-%d'))
 
                 # Check if the date is a trading day
                 reasonable_date = _get_api_nontrading_day(earliest_date_str)
@@ -155,8 +157,8 @@ class SelBroker:
                     "BranchCode": branch,
                 }
 
-                start_urls.append({"url": url_vol, "meta": meta})
-                start_urls.append({"url": url_amt, "meta": meta})
+                start_urls.append({"url": url_vol, "meta": meta, "type":'E'})
+                start_urls.append({"url": url_amt, "meta": meta, "type":"B"})
                 SelBroker.client.close()
 
         return start_urls
@@ -164,7 +166,7 @@ class SelBroker:
     def parse(self):
 
         allow_domains = ['https://just2.entrust.com.tw/',
-                         'https://fubon-ebrokerdj.fbs.com.tw/', \
+                         'https://fubon-ebrokerdj.fbs.com.tw/',
                          'http://5850web.moneydj.com/',
                          'https://stock.capital.com.tw/',
                          'https://newjust.masterlink.com.tw/',
@@ -203,15 +205,22 @@ class SelBroker:
 
             logger.debug(cur_url)
 
-            wait = WebDriverWait(driver, 600)
-            wait.until(EC.presence_of_element_located(
-                (By.XPATH, '//*[@id="oMainTable"]/tbody/tr[3]/td[1]/table/tbody/tr[1]/td')))
+            try:
+                wait = WebDriverWait(driver, 600)
+                wait.until(EC.presence_of_element_located(
+                    (By.XPATH, '//*[@id="oMainTable"]/tbody/tr[3]/td[1]/table/tbody/tr[1]/td')))
+            except TimeoutError as e:
+                time.sleep(1800)
+                driver.get(cur_url)
+                wait = WebDriverWait(driver, 600)
+                wait.until(EC.presence_of_element_located(
+                    (By.XPATH, '//*[@id="oMainTable"]/tbody/tr[3]/td[1]/table/tbody/tr[1]/td')))
 
             filename = f''
             for key, value in link['meta'].items():
                 filename = filename + key + "-" + value + '_'
 
-            with open(f"/home/wenchin/airflow/dags/data/sel_broker_data/{filename}_{link['url'][-1]}_{date_string}.txt", 'w') as f:
+            with open(f"/home/wenchin/airflow/dags/data/sel_broker_data/{filename}_{link['type']}_{date_string}.txt", 'w') as f:
                 f.write(driver.page_source)
 
         driver.quit()
@@ -228,8 +237,8 @@ class SelBrokerDataCrawler:
         result = []
         with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
             tasks = []
-            for root, dirs, files in os.walk(r"C:\Users\s3309\Desktop\Investment\testtxt", topdown=False):
-                for file in files:
+            for root, dirs, files in os.walk(r"/home/wenchin/airflow/dags/data/sel_broker_data", topdown=False):
+                for file in files[:1000]:
                     tasks.append(await loop.run_in_executor(executor, SelBrokerDataCrawler.parse, root, file))
             result.extend(await asyncio.gather(*tasks))
 
@@ -238,12 +247,31 @@ class SelBrokerDataCrawler:
         """
         Parses financial data from an HTML file and saves it to a database.
         """
+
+        response = None
+        async with aiofiles.open(os.path.join(root, filename), 'rb') as f:
+            content = await f.read()
+            encoding = chardet.detect(content)['encoding']
+
         try:
-            async with aiofiles.open(os.path.join(root, filename), 'r') as f:
+            async with aiofiles.open(os.path.join(root, filename), 'r' ,encoding=encoding) as f:
                 response = await f.read()
         except:
-            async with aiofiles.open(os.path.join(root, filename), 'r' ,encoding='utf-8') as f:
-                response = await f.read()
+            try:
+                async with aiofiles.open(os.path.join(root, filename), 'r') as f:
+                    response = await f.read()
+                print('natural selection failed')
+            except Exception as e:
+                logger.debug(e)
+                async with aiofiles.open(os.path.join(root, filename), 'r',encoding='big5',errors='ignore') as f:
+                    response = await f.read()
+
+        finally:
+            if not response:
+                return await asyncio.to_thread(shutil.move,
+                    os.path.join(root, filename),
+                    os.path.join(r'/home/wenchin/airflow/dags/data/UnicodeError', filename)
+                )
 
         print('Getting response...')
 
@@ -255,21 +283,30 @@ class SelBrokerDataCrawler:
                 meta_data[key] = value
 
         soup = BeautifulSoup(response, "html.parser")
+
+        trans_data_str = soup.find("td", {'id': 't3n0'})
+        if trans_data_str:
+            if soup.find("td", {'id': 't3n0'}).text =='無此券商分點交易資料':
+                return await asyncio.to_thread(shutil.move,
+                                               os.path.join(root, filename),
+                                               os.path.join(r'/home/wenchin/airflow/dags/data/completed_data', filename)
+                                               )
+
         tables = soup.find("table",{'id':'oMainTable'}).find_all('table')
 
         date_str = soup.find("div", {"class": "t11"}).text[-8:]
         try:
             meta_data['Date']=datetime.strptime(date_str, "%Y%m%d")
         except ValueError as e:
-            shutil.move(
+            logger.debug(e)
+            return await asyncio.to_thread(shutil.move,
                 os.path.join(root, filename),
-                os.path.join(r'C:\Users\s3309\Desktop\Investment\completedtxt', filename)
+                os.path.join(r"/home/wenchin/airflow/dags/data/completed_data", filename)
             )
-            return
 
 
         data_list = []
-        for table in tables[1:3]:
+        for table in tables[:3]:
             header_line = table.find_all("tr")[1]
             header = [h.text for h in header_line.find_all("td")]
 
@@ -293,23 +330,36 @@ class SelBrokerDataCrawler:
                 data["StockName"] = stockname
 
                 record_data = [d.text.replace(r",", "") for d in record.find_all("td")[1:]]
-                data[name_mapping[header[1]]] = record_data[0]
-                data[name_mapping[header[2]]] = record_data[1]
+                try:
+                    data[name_mapping[header[1]]] = record_data[0]
+                    data[name_mapping[header[2]]] = record_data[1]
+                    data_list.append(data)
+                except Exception as e:
+                    logger.debug(e)
+                    return await asyncio.to_thread(shutil.move,
+                        os.path.join(root, filename),
+                        os.path.join(r'/home/wenchin/airflow/dags/data/problem', filename)
+                    )
+        try:
+            await SelBrokerDataCrawler.DB.insert_many(data_list, ordered=False)
+            await asyncio.to_thread(shutil.move,
+                os.path.join(root, filename),
+                os.path.join(r'/home/wenchin/airflow/dags/data/completed_data', filename)
+            )
+        except errors.BulkWriteError as e:
+            logger.debug(e)
+            for error in e.details['writeErrors']:
+                if not error['code'] == 11000:  # 11000 is the error code for duplicate key error
+                    return await asyncio.to_thread(shutil.move,
+                        os.path.join(root, filename),
+                        os.path.join(r'/home/wenchin/airflow/dags/data/problem', filename)
+                    )
 
-                data_list.append(data)
-            try:
-                SelBrokerDataCrawler.DB.insert_many(data_list, ordered=True)
-                shutil.move(
-                    os.path.join(root, filename),
-                    os.path.join(r'C:\Users\s3309\Desktop\Investment\completedtxt', filename)
-                )
+            await asyncio.to_thread(shutil.move,
+                os.path.join(root, filename),
+                os.path.join(r'/home/wenchin/airflow/dags/data/completed_data', filename)
+            )
 
-            except errors.BulkWriteError as e:
-                for error in e.details['writeErrors']:
-                    if error['code'] == 11000:  # 11000 is the error code for duplicate key error
-                        print(f"Skipped document: {error['op']}")
-                    else:
-                        raise  ValueError('Unexpected Error')
 
     async def _combine_stock_info(data:list):
         combined_data = {}
@@ -344,26 +394,33 @@ class SelBrokerDataCrawler:
     @staticmethod
     def _extract_stockinfo(bs4_obj: BeautifulSoup) -> str:
 
-        name_obj = bs4_obj.find("script")
 
-        if name_obj is not None:
-            pattern = r"GenLink2stk\('(\w+)','([^']+)'\);"
-            name_str = name_obj.text
-            match = re.search(pattern, name_str)
-        else:
-            pattern = "^[A-Za-z0-9]+"
-            name_str = bs4_obj.find("a").text
-            match = re.search(pattern, name_str)
+        try:
+            name_obj = bs4_obj.find("script")
 
-        if match and pattern == r"GenLink2stk\('(\w+)','([^']+)'\);":
-            stockid, stockname = match.group(1), match.group(2)
+            if name_obj is not None:
+                pattern = r"GenLink2stk\('(\w+)','([^']+)'\);"
+                name_str = name_obj.text
+                match = re.search(pattern, name_str)
+            else:
+                pattern = "^[A-Za-z0-9]+"
+                name_str = bs4_obj.find("a").text
+                match = re.search(pattern, name_str)
 
-        elif pattern == "^[A-Za-z0-9]+":
-            stockid = match.group(0)
-            stockname = name_str[match.span()[1]:]
+            if match and pattern == r"GenLink2stk\('(\w+)','([^']+)'\);":
+                stockid, stockname = match.group(1), match.group(2)
 
-        else:
-            stockid = stockname = None
+            elif pattern == "^[A-Za-z0-9]+":
+                stockid = match.group(0)
+                stockname = name_str[match.span()[1]:]
+
+            else:
+                stockid = stockname = None
+        except AttributeError:
+            asyncio.to_thread(shutil.move,
+                                    os.path.join(root, filename),
+                                    os.path.join(r'/home/wenchin/airflow/dags/data/problem', filename)
+                                    )
 
         return stockid, stockname
 
