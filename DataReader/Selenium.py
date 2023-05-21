@@ -40,7 +40,7 @@ def _get_api_nontrading_day(default_date:str):
         Check whether the market opened that day
         """
         day_plus_one_day = _day_move_one_day(date_str, plus=True)
-        url = f'https://just2.entrust.com.tw/z/zg/zgb/zgb0.djhtm?a=5920&b=5920&c=E&e={date_str}&f={date_str}'
+        url = f'https://sjmain.esunsec.com.tw/z/zg/zgb/zgb0.djhtm?a=5920&b=5920&c=E&e={date_str}&f={date_str}'
         print(url)
         response = requests.get(url, headers={'User-Agent': Faker().user_agent()})
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -165,7 +165,7 @@ class SelBroker:
 
     def parse(self):
 
-        allow_domains = ['https://just2.entrust.com.tw/',
+        allow_domains = [
                          'https://fubon-ebrokerdj.fbs.com.tw/',
                          'http://5850web.moneydj.com/',
                          'https://stock.capital.com.tw/',
