@@ -28,14 +28,15 @@ def main(crawler_type: str, crawler_name: str):
     )
 
     # Get Raw Data
-    dataset ,wargs = getattr(func, "crawler_select")(crawler_name)
+    dataset ,args = getattr(func, "crawler_select")(crawler_name)
     print('Dataset!',dataset)
     # Update to database
-    r.update_data(dataset, update_date ,*wargs)
+    r.update_data(dataset, update_date ,*args)
     client.close()
 
 
 def date_compare(r, crawler_name: str):
+    """If the Data is newest then cancel the update"""
     recent_date = r.recent_date()
     date_checker = DateChecker(crawler_name)
     update_date = date_checker.update
@@ -63,9 +64,7 @@ class DateChecker:
 
     @staticmethod
     def season():
-        """
-        Return each quarter time for validation of date checker function
-        """
+        """Return each quarter time for validation of date checker function"""
         """
         today = datetime.datetime.today()
         cur_year = today.year

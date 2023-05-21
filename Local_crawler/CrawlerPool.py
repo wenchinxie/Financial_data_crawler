@@ -13,7 +13,7 @@ def crawler_select(crawler_name: str):
     model_name = config.get("Cleaner", crawler_name)
     cls = getattr(
         importlib.import_module(
-            f"Financial_data_crawler.Data_Cleaner.financial_report_cleaner"
+            f"Financial_data_crawler.DataCleaner.financial_report_cleaner"
         ),
         model_name,
     )()

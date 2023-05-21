@@ -1,13 +1,11 @@
-# Deal with files
 import os
 import zipfile
 import shutil
 
-# For data cleaning
+
 from bs4 import BeautifulSoup
 from pathlib import Path
 import multiprocessing
-
 from loguru import logger
 
 from Financial_data_crawler import config_setup
@@ -188,10 +186,9 @@ class TWFinancialReport:
         """
         base_dir = config.get("BaseDir", "Base")
         html_dir = os.path.join(base_dir, "html_files")
-        todo_dir = os.path.join(base_dir, "todo")
         completed_zipdir = os.path.join(base_dir, "completedzip")
 
-        for root, dirs, files in os.walk(todo_dir):
+        for root, dirs, files in os.walk(os.path.join(base_dir, "todo")):
             for file in files:
                 if file.endswith(".zip"):
                     zip_path = os.path.join(root, file)
