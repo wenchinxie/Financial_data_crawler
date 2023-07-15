@@ -160,8 +160,8 @@ class IndScraper(BaseClient):
                 'IndCode': ind_code,
                 'SubInd': sub_ind,
                 'SubIndCode': sub_ind_code,
-                'Code': comp['href'][-4:],
-                'Name': comp.text.strip()
+                'stock_id': comp['href'][-4:],
+                'stock_name': comp.text.strip()
             }
 
     @staticmethod
