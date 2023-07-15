@@ -1,11 +1,12 @@
 from typing import Dict
 import datetime
+import re
 import chardet
 
 import httpx
 from faker import Faker
 from bs4 import BeautifulSoup
-
+import pandas as pd
 
 
 def autodetect(content):
