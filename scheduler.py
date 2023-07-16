@@ -53,8 +53,12 @@ def date_compare(r, crawler_name: str):
 
 class DateChecker:
     def __init__(self, crawler_name: str):
-        self.__check_type = config.get("DateCheck", crawler_name)
-        self.update = getattr(self, self.__check_type)()
+        try:
+            self.__check_type = config.get("DateCheck", crawler_name)
+            self.update = getattr(self, self.__check_type)()
+        except:
+            # Stands for update every time
+            self.update = 'always update'
 
     @staticmethod
     def marketday():
