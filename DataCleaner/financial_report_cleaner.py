@@ -89,10 +89,9 @@ class TWFinancialReport:
             finally:
                 financial_report[sht] = res
 
-        if PROBLEM_TABLE:
-            TWFinancialReport.move_problem_file(file)
-        else:
-            TWFinancialReport.move_completed_file(file)
+
+        move_type = "problem" if PROBLEM_TABLE else "completed"
+        TWFinancialReport.move_completed_file(file)
 
         return financial_report
 
@@ -203,13 +202,7 @@ class TWFinancialReport:
                     shutil.move(zip_path, completed_zipdir)
 
     @staticmethod
-    def move_completed_file(file):
+    def move_completed_file(file,move_type="completed"):
         base_dir = config.get("BaseDir", "Base")
-        completed_dir = os.path.join(base_dir, "completed")
-        shutil.move(file, os.path.join(completed_dir, os.path.basename(file)))
-
-    @staticmethod
-    def move_problem_file(file):
-        base_dir = config.get("BaseDir", "Base")
-        completed_dir = os.path.join(base_dir, "problem")
+        completed_dir = os.path.join(base_dir, move_type)
         shutil.move(file, os.path.join(completed_dir, os.path.basename(file)))
