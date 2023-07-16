@@ -24,6 +24,10 @@ def rename_col(df: pd.DataFrame, col_mapping: dict) -> pd.DataFrame:
     rename_col_df = rename_col_df[col_mapping.values()]
     return rename_col_df
 
+def turn_year(row):
+    date_str = str(row)
+    return str(int(date_str[:3])+1911)+date_str[3:]
+
 
 class TWListed_opendata_cleaner:
     def __init__(self):
@@ -82,6 +86,33 @@ class TWListed_opendata_cleaner:
         remove_redundancy_df['Date']=remove_redundancy_df['Date'].dt.strftime('%Y-%m-%d')
         return remove_redundancy_df.to_dict(orient="records") , ['Level']
 
+    @staticmethod
+    def margin_trading_cleaner(df:pd.DataFrame):
+        name_mapping = {
+          '股票代號':'stock_id',
+          '股票名稱':'stock_name',
+          '融資前日餘額':"MarginPurchaseYesterdayBalance",
+          '融資買進':"MarginPurchaseBuy",
+          '融資賣出':"MarginPurchaseSell",
+          '融資現金償還':"MarginPurchaseCashRepayment",
+          '融資今日餘額':"MarginPurchaseTodayBalance",
+          '融資限額':'MarginPurchaseLimit',
+          '融券前日餘額':'ShortSaleYesterdayBalance',
+          '融券賣出':'ShortSaleSell',
+          '融券買進':"ShortSaleBuy",
+          '融券現券償還':'ShortSaleCashRepayment',
+          '融券今日餘額': "ShortSaleTodayBalance",
+          '融券限額': "ShortSaleLimit",
+          '資券互抵':'OffsetLoanAndShort',
+          '註記':'Note'}
+
+        new_cols = list(name_mapping.values())
+        renamed_df = rename_col(df,name_mapping)
+        renamed_df[new_cols[2:-1]] =renamed_df[new_cols[2:-1]].astype(int)
+
+        return renamed_df
+
+
 
 class TWOTC_opendata_cleaner:
     def __init__(self):
@@ -102,6 +133,36 @@ class TWOTC_opendata_cleaner:
         rename_col_df = rename_col(df, self.twotc_stock_col)
         clean_df = df_cleaner(rename_col_df)
         return clean_df.to_dict(orient="records") , []
+
+    @staticmethod
+    def margin_trading_cleaner(df:pd.DataFrame):
+        name_mapping = {
+              '資料日期':'date',
+              '代號':'stock_id',
+              '名稱':'stock_name',
+              '前資餘額':"MarginPurchaseYesterdayBalance",
+              '資買':"MarginPurchaseBuy",
+              '資賣':"MarginPurchaseSell",
+              '現償':"MarginPurchaseCashRepayment",
+              '資餘額':"MarginPurchaseTodayBalance",
+              '資限額':'MarginPurchaseLimit',
+              '前券餘額':'ShortSaleYesterdayBalance',
+              '券賣':'ShortSaleSell',
+              '券買':"ShortSaleBuy",
+              '券償':'ShortSaleCashRepayment',
+              '券餘額':"ShortSaleTodayBalance",
+              '券限額':"ShortSaleLimit",
+              '資券相抵':'OffsetLoanAndShort',
+              '備註':'Note'}
+
+        new_cols = list(name_mapping.values())
+        renamed_df = rename_col(df,name_mapping)
+        renamed_df[new_cols[3:-1]] =renamed_df[new_cols[3:-1]].astype(int)
+
+        renamed_df['date']=renamed_df['date'].apply(turn_year)
+        renamed_df['date'] = pd.to_datetime(renamed_df['date']).dt.strftime('%Y-%m-%d')
+
+        return renamed_df
 
 
 def turntoint(s: str) -> str:
