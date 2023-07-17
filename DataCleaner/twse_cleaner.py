@@ -30,10 +30,10 @@ def turn_year(row):
 
 def get_company_news_col():
     return {
-        '出表日期':'published_date',
+        '出表日期':'Date',
         '發言日期':'announced_date',
         '事實發生日':'happened_date',
-        '公司代號':'stock_id',
+        '公司代號':'StockID',
         '公司名稱':'stock_name',
         '主旨':'title',
         '符合條款':'clause',
@@ -125,7 +125,13 @@ class TWListed_opendata_cleaner:
         return renamed_df
 
     def Listed_CompaniesNews(self,df:pd.DataFrame):
-        return  rename_col(df,get_company_news_col())
+        df = rename_col(df, get_company_news_col())
+        df['StockID']=df['StockID'].astype(str)
+        for date_col in ['Date', 'announced_date', 'happened_date']:
+            df[date_col] = df[date_col].apply(turn_year)
+            df[date_col] = pd.to_datetime(df[date_col])
+
+        return df.to_dict(orient="records"), []
 
 class TWOTC_opendata_cleaner:
     def __init__(self):
@@ -178,7 +184,13 @@ class TWOTC_opendata_cleaner:
         return renamed_df
 
     def OTC_CompaniesNews(self,df:pd.DataFrame):
-        return  rename_col(df,get_company_news_col())
+        df = rename_col(df,get_company_news_col())
+        df['StockID'] = df['StockID'].astype(str)
+        for date_col in ['Date','announced_date','happened_date']:
+            df[date_col] = df[date_col].apply(turn_year)
+            df[date_col] = pd.to_datetime(df[date_col])
+
+        return  df.to_dict(orient="records") , []
 
 
 def turntoint(s: str) -> str:
