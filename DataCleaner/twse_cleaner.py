@@ -28,6 +28,18 @@ def turn_year(row):
     date_str = str(row)
     return str(int(date_str[:3])+1911)+date_str[3:]
 
+def get_company_news_col():
+    return {
+        '出表日期':'published_date',
+        '發言日期':'announced_date',
+        '事實發生日':'happened_date',
+        '公司代號':'stock_id',
+        '公司名稱':'stock_name',
+        '主旨':'title',
+        '符合條款':'clause',
+        '說明':'description',
+    }
+
 
 class TWListed_opendata_cleaner:
     def __init__(self):
@@ -112,7 +124,8 @@ class TWListed_opendata_cleaner:
 
         return renamed_df
 
-
+    def Listed_CompaniesNews(self,df:pd.DataFrame):
+        return  rename_col(df,get_company_news_col())
 
 class TWOTC_opendata_cleaner:
     def __init__(self):
@@ -163,6 +176,9 @@ class TWOTC_opendata_cleaner:
         renamed_df['date'] = pd.to_datetime(renamed_df['date']).dt.strftime('%Y-%m-%d')
 
         return renamed_df
+
+    def OTC_CompaniesNews(self,df:pd.DataFrame):
+        return  rename_col(df,get_company_news_col())
 
 
 def turntoint(s: str) -> str:
