@@ -3,7 +3,7 @@ import json
 import requests
 import datetime
 from Financial_data_crawler.db.clients import MongoClient
-from Financial_data_crawler.db.NewsModel import Cynes_News
+from Financial_data_crawler.db.NewsModels import Cynes_News
 from Financial_data_crawler.DataCleaner import news_cleaner
 
 
