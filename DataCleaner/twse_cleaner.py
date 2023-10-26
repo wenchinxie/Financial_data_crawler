@@ -125,6 +125,7 @@ class TWListed_opendata_cleaner:
         return renamed_df
 
     def Listed_CompaniesNews(self,df:pd.DataFrame):
+        
         df = rename_col(df, get_company_news_col())
         df['StockID']=df['StockID'].astype(str)
         for date_col in ['Date', 'announced_date', 'happened_date']:

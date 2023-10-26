@@ -1,3 +1,4 @@
+from typing import Union
 import re
 import time
 import random
@@ -11,13 +12,18 @@ import tracemalloc
 
 from bs4 import BeautifulSoup
 from loguru import logger
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+
 from mongoengine import *
 from pymongo import UpdateOne
+from faker import Faker
 
 from Financial_data_crawler.db.clients import MongoClient,get_motor_conn
 from Financial_data_crawler.db.ChipModels import Broker_Info, Broker_Transaction
@@ -31,19 +37,27 @@ def _get_api_nontrading_day(default_date:str):
     then automatically move backward to the day before it.
     """
 
+    def get_report_day(url:str):
+        response = requests.get(url, headers={'User-Agent': Faker().user_agent()})
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        text_label = soup.find("div", {"class": "t11"})
+        if text_label is None:
+            time.sleep(1800)
+            return get_report_day(url)
+        return text_label.text[-8:]
+
     import requests
 
     def nontrading_day_test(date_str:str)->str:
         """
         Check whether the market opened that day
         """
+
         day_plus_one_day = _day_move_one_day(date_str, plus=True)
         url = f'https://just2.entrust.com.tw/z/zg/zgb/zgb0.djhtm?a=5920&b=5920&c=E&e={date_str}&f={date_str}'
         print(url)
-        response = requests.get(url, headers={'User-Agent': fake.user_agent()})
-        soup = BeautifulSoup(response.text, 'html.parser')
-        compare_date_str = soup.find("div", {"class": "t11"}).text[-8:]
-        print(compare_date_str)
+        compare_date_str = get_report_day(url)
 
         try:
             report_date = datetime.strptime(compare_date_str, '%Y%m%d')
@@ -58,10 +72,13 @@ def _get_api_nontrading_day(default_date:str):
 
     return default_date
 
-def _day_move_one_day(date_str:str, plus:bool = False)->str:
+def _day_move_one_day(date_str:Union[str,datetime], plus:bool = False)->str:
 
     # Convert the string to a datetime object
-    date = datetime.strptime(date_str, '%Y-%m-%d')
+    if isinstance(date_str,datetime):
+        date = date_str
+    else:
+        date = datetime.strptime(date_str, '%Y-%m-%d')
 
     # Subtract one day
     one_day = timedelta(days=1)
@@ -89,6 +106,8 @@ class SelBroker:
             earliest_transaction = Broker_Transaction.objects().order_by('Date').first()
 
             if earliest_transaction is not None:
+
+
                 # Convert the date to a reasonable format
                 earliest_date_str = _day_move_one_day(earliest_transaction['Date'])
 
@@ -124,16 +143,7 @@ class SelBroker:
 
             for branch in broker_d.keys():
 
-                '''
-                # Primary key: broker_code,branch_code,date
-                # Don't add duplicated records
-                if Broker_Transaction.objects(
-                    Date=_reformat_date_str(self.date),
-                    BrokerCode=broker_code,
-                    BranchCode=branch,
-                    ).count()>0:
-                    continue;
-                '''
+
                 if re.search("[A-Za-z]", branch):
                     branch_code = "".join(
                         [format(ord(c), "02x").zfill(4) for c in branch]
@@ -183,6 +193,7 @@ class SelBroker:
 
         chromedriver_path = '/home/wenchin/airflow/dags/chromedriver'
         driver = webdriver.Chrome(executable_path=chromedriver_path, options=options)
+        # driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
         today = datetime.today()
         date_string = today.strftime('%Y%m%d%H%M%S')
 
@@ -205,7 +216,7 @@ class SelBroker:
 
             wait = WebDriverWait(driver, 600)
             wait.until(EC.presence_of_element_located(
-                (By.XPATH, '//*[@id="oMainTable"]/tbody/tr[3]/td[1]/table/tbody/tr[1]/td')))
+                (By.XPATH, "//table[@id='oMainTable']")))
 
             filename = f''
             for key, value in link['meta'].items():
